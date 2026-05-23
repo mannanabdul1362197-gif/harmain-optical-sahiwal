@@ -1,0 +1,6 @@
+node_modules/
+harmain_optical.db
+.env
+uploads/
+.DS_Store
+*.log

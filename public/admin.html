@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmain Optical - Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    .admin-container { max-width: 1400px; margin: 0 auto; padding: 80px 24px 40px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 16px; }
+    .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+    .stat-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; }
+    .stat-card h3 { font-size: 2rem; color: #C9A84C; margin-bottom: 5px; }
+    .admin-tabs { display: flex; gap: 12px; margin-bottom: 30px; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+    .tab-btn { padding: 12px 24px; background: none; border: none; font-weight: 600; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
+    .tab-btn.active { color: #C9A84C; border-bottom: 2px solid #C9A84C; }
+    .product-form-card, .order-list { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; }
+    .products-table, .orders-table { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f8f8; font-weight: 600; }
+    .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .status-pending { background: #FFF3E0; color: #FF9800; }
+    .status-completed { background: #E8F5E9; color: #4CAF50; }
+    .status-processing { background: #E3F2FD; color: #2196F3; }
+    .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .login-box { background: white; padding: 40px; border-radius: 24px; width: 350px; text-align: center; }
+    .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; }
+    .error-msg { color: red; font-size: 0.85rem; margin-top: 10px; }
+    .logout-btn { background: #dc3545; color: white; padding: 8px 20px; border-radius: 30px; text-decoration: none; }
+    .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-sm { padding: 6px 12px; font-size: 0.75rem; border-radius: 8px; cursor: pointer; border: none; }
+    .btn-edit { background: #2196F3; color: white; }
+    .btn-delete { background: #dc3545; color: white; }
+    .product-img-preview { width: 50px; height: 40px; object-fit: cover; border-radius: 8px; }
+    .hidden { display: none; }
+    .btn-outline { background: transparent; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-box">
+    <i class="fas fa-glasses" style="font-size: 48px; color: #C9A84C;"></i>
+    <h2>Admin Login</h2>
+    <input type="text" id="adminUser" placeholder="Username" value="admin">
+    <input type="password" id="adminPass" placeholder="Password" value="admin123">
+    <button onclick="adminLogin()" class="btn-primary" style="width:100%; margin-top:10px;">Login</button>
+    <div id="loginError" class="error-msg"></div>
+  </div>
+</div>
+
+<div id="adminContent" class="hidden">
+  <nav class="navbar" style="position: fixed; top:0; left:0; right:0; z-index:100; background:white;">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="logo"><i class="fas fa-glasses"></i><h1>Harmain <span>Admin</span></h1></div>
+      <button onclick="adminLogout()" class="logout-btn">Logout</button>
+    </div>
+  </nav>
+  <div class="admin-container">
+    <div class="admin-header"><h1>Dashboard</h1></div>
+    <div class="admin-stats" id="statsContainer"></div>
+    <div class="admin-tabs">
+      <button class="tab-btn active" onclick="showTab('products')">Products Management</button>
+      <button class="tab-btn" onclick="showTab('orders')">Orders</button>
+      <button class="tab-btn" onclick="showTab('addProduct')">Add New Product</button>
+      <button class="tab-btn" onclick="showTab('lenses')">Lens Management</button>
+    </div>
+    <div id="productsTab" class="tab-content">
+      <div class="product-form-card"><h3>All Products</h3><div class="products-table"><table id="productsTable"><thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Category</th><th>Stock</th><th>Actions</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+    <div id="ordersTab" class="tab-content hidden">
+      <div class="order-list"><h3>Customer Orders</h3><div class="orders-table"><table id="ordersTable"><thead><tr><th>Order#</th><th>Customer</th><th>Product</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+    <div id="addProductTab" class="tab-content hidden">
+      <div class="product-form-card">
+        <h3 id="formTitle">Add New Product</h3>
+        <form id="productForm">
+          <input type="hidden" id="productId">
+          <div class="form-grid">
+            <div class="form-group"><input type="text" id="productName" placeholder="Product Name" required></div>
+            <div class="form-group"><input type="number" id="productPrice" placeholder="Price (PKR)" required></div>
+            <div class="form-group"><select id="productCategory"><option value="general">General</option><option value="men">Men</option><option value="women">Women</option><option value="computer">Blue Cut</option><option value="sunglasses">Sunglasses</option><option value="kids">Kids</option><option value="premium">Premium</option></select></div>
+            <div class="form-group"><input type="number" id="productStock" placeholder="Stock" value="10"></div>
+            <div class="form-group"><textarea id="productDesc" placeholder="Description" rows="2"></textarea></div>
+            <div class="form-group"><input type="file" id="productImage" accept="image/*"></div>
+            <div class="form-group"><label><input type="checkbox" id="productFeatured"> Featured Product</label></div>
+          </div>
+          <button type="submit" class="btn-primary">Save Product</button>
+        </form>
+      </div>
+    </div>
+    <div id="lensesTab" class="tab-content hidden">
+      <div class="product-form-card">
+        <h3>Manage Lens Options</h3>
+        <form id="lensForm" style="margin-bottom: 30px;">
+          <input type="hidden" id="lensId">
+          <div class="form-grid">
+            <div class="form-group"><input type="text" id="lensName" placeholder="Lens Name (e.g., Glass, Plastic)" required></div>
+            <div class="form-group"><input type="number" id="lensPrice" placeholder="Extra Price (PKR)" required></div>
+            <div class="form-group"><label><input type="checkbox" id="lensActive" checked> Active (visible to customers)</label></div>
+          </div>
+          <button type="submit" class="btn-primary">Save Lens Option</button>
+          <button type="button" class="btn-outline" onclick="resetLensForm()">Cancel</button>
+        </form>
+        <h3>Existing Lens Options</h3>
+        <div class="products-table"><table id="lensesTable"><thead><tr><th>ID</th><th>Name</th><th>Price (Rs)</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let adminToken = null;
+  const IMGBB_API_KEY = "a92737a5896d86c86252ff8f0e87327c"; // ⚠️ REPLACE WITH YOUR REAL API KEY
+
+  async function adminLogin() {
+    const username = document.getElementById('adminUser').value;
+    const password = document.getElementById('adminPass').value;
+    const response = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      adminToken = data.token;
+      localStorage.setItem('adminToken', adminToken);
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('adminContent').classList.remove('hidden');
+      loadDashboard();
+      loadProducts();
+      loadOrders();
+      loadLenses();
+    } else {
+      document.getElementById('loginError').innerText = data.error || 'Login failed';
+    }
+  }
+
+  function adminLogout() {
+    localStorage.removeItem('adminToken');
+    location.reload();
+  }
+
+  async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('adminToken');
+    options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+    const response = await fetch(url, options);
+    if (response.status === 401) { adminLogout(); throw new Error('Unauthorized'); }
+    return response;
+  }
+
+  async function loadDashboard() {
+    const res = await fetchWithAuth('/api/admin/stats');
+    const stats = await res.json();
+    document.getElementById('statsContainer').innerHTML = `
+      <div class="stat-card"><h3>${stats.products}</h3><p>Total Products</p></div>
+      <div class="stat-card"><h3>${stats.orders}</h3><p>Total Orders</p></div>
+      <div class="stat-card"><h3>Rs ${stats.revenue.toLocaleString()}</h3><p>Revenue</p></div>
+      <div class="stat-card"><h3>${stats.pending}</h3><p>Pending Orders</p></div>
+    `;
+  }
+
+  async function loadProducts() {
+    const res = await fetch('/api/products');
+    const products = await res.json();
+    const tbody = document.querySelector('#productsTable tbody');
+    tbody.innerHTML = products.map(p => `
+      <tr>
+        <td><img src="${p.image_url || 'https://placehold.co/50x40/C9A84C/white?text=Glass'}" class="product-img-preview" onerror="this.src='https://placehold.co/50x40/C9A84C/white?text=Glass'"></td>
+        <td>${p.name}</td>
+        <td>Rs ${p.price}</td>
+        <td>${p.category}</td>
+        <td>${p.stock}</td>
+        <td class="action-buttons"><button class="btn-sm btn-edit" onclick="editProduct(${p.id})">Edit</button><button class="btn-sm btn-delete" onclick="deleteProduct(${p.id})">Delete</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function deleteProduct(id) {
+    if (confirm('Delete this product?')) {
+      await fetchWithAuth(`/api/products/${id}`, { method: 'DELETE' });
+      loadProducts();
+    }
+  }
+
+  async function editProduct(id) {
+    const res = await fetch(`/api/products/${id}`);
+    const p = await res.json();
+    document.getElementById('formTitle').innerText = 'Edit Product';
+    document.getElementById('productId').value = p.id;
+    document.getElementById('productName').value = p.name;
+    document.getElementById('productPrice').value = p.price;
+    document.getElementById('productCategory').value = p.category;
+    document.getElementById('productStock').value = p.stock;
+    document.getElementById('productDesc').value = p.description;
+    document.getElementById('productFeatured').checked = p.featured == 1;
+    showTab('addProduct');
+  }
+
+  document.getElementById('productForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('productId').value;
+    const imageFile = document.getElementById('productImage').files[0];
+    let imageUrl = '';
+
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      formData.append('key', IMGBB_API_KEY);
+      try {
+        const uploadRes = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) {
+          imageUrl = uploadData.data.url;
+        } else {
+          alert('Image upload failed: ' + (uploadData.error?.message || 'Unknown error'));
+          return;
+        }
+      } catch (err) {
+        alert('Network error while uploading image');
+        return;
+      }
+    } else if (id) {
+      const existingRes = await fetch(`/api/products/${id}`);
+      const existing = await existingRes.json();
+      imageUrl = existing.image_url || '';
+    }
+
+    const productData = {
+      id: id || undefined,
+      name: document.getElementById('productName').value,
+      price: parseFloat(document.getElementById('productPrice').value),
+      category: document.getElementById('productCategory').value,
+      stock: parseInt(document.getElementById('productStock').value),
+      description: document.getElementById('productDesc').value,
+      featured: document.getElementById('productFeatured').checked ? 1 : 0,
+      image_url: imageUrl
+    };
+
+    const res = await fetchWithAuth('/api/products/json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    if (res.ok) {
+      alert('Product saved successfully!');
+      document.getElementById('productForm').reset();
+      document.getElementById('productId').value = '';
+      document.getElementById('formTitle').innerText = 'Add New Product';
+      loadProducts();
+      showTab('products');
+    } else {
+      const err = await res.json();
+      alert('Error: ' + err.error);
+    }
+  });
+
+  async function loadOrders() {
+    const res = await fetchWithAuth('/api/orders');
+    const orders = await res.json();
+    const tbody = document.querySelector('#ordersTable tbody');
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td>${o.order_number}</td>
+        <td>${o.customer_name}<br><small>${o.customer_phone}</small></td>
+        <td>${o.product_snapshot?.name || 'N/A'}</td>
+        <td>Rs ${o.total_price}</td>
+        <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+        <td><select onchange="updateStatus(${o.id}, this.value)" class="btn-sm"><option ${o.status=='pending'?'selected':''} value="pending">Pending</option><option ${o.status=='processing'?'selected':''} value="processing">Processing</option><option ${o.status=='completed'?'selected':''} value="completed">Completed</option><option ${o.status=='cancelled'?'selected':''} value="cancelled">Cancelled</option></select></td>
+      </tr>
+    `).join('');
+  }
+
+  async function updateStatus(orderId, status) {
+    await fetchWithAuth(`/api/orders/${orderId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    loadOrders();
+  }
+
+  async function loadLenses() {
+    const res = await fetchWithAuth('/api/lens-types?all=true');
+    const lenses = await res.json();
+    const tbody = document.querySelector('#lensesTable tbody');
+    tbody.innerHTML = lenses.map(l => `
+      <tr>
+        <td>${l.id}</td>
+        <td>${l.name}</td>
+        <td>Rs ${l.price}</td>
+        <td>${l.is_active ? '✅ Active' : '❌ Inactive'}</td>
+        <td class="action-buttons"><button class="btn-sm btn-edit" onclick="editLens(${l.id})">Edit</button><button class="btn-sm btn-delete" onclick="deleteLens(${l.id})">Delete</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function editLens(id) {
+    const res = await fetchWithAuth(`/api/lens-types/${id}`);
+    const lens = await res.json();
+    document.getElementById('lensId').value = lens.id;
+    document.getElementById('lensName').value = lens.name;
+    document.getElementById('lensPrice').value = lens.price;
+    document.getElementById('lensActive').checked = lens.is_active == 1;
+  }
+
+  function resetLensForm() {
+    document.getElementById('lensId').value = '';
+    document.getElementById('lensName').value = '';
+    document.getElementById('lensPrice').value = '';
+    document.getElementById('lensActive').checked = true;
+  }
+
+  async function deleteLens(id) {
+    if (confirm('Delete this lens option?')) {
+      await fetchWithAuth(`/api/lens-types/${id}`, { method: 'DELETE' });
+      loadLenses();
+    }
+  }
+
+  document.getElementById('lensForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('lensId').value;
+    const name = document.getElementById('lensName').value;
+    const price = parseFloat(document.getElementById('lensPrice').value);
+    const is_active = document.getElementById('lensActive').checked ? 1 : 0;
+    const url = id ? `/api/lens-types/${id}` : '/api/lens-types';
+    const method = id ? 'PUT' : 'POST';
+    await fetchWithAuth(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, price, is_active }) });
+    resetLensForm();
+    loadLenses();
+  });
+
+  function showTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.getElementById(`${tab}Tab`).classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (tab === 'products') document.querySelector('.tab-btn:first-child').classList.add('active');
+    else if (tab === 'orders') document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    else if (tab === 'addProduct') document.querySelectorAll('.tab-btn')[2].classList.add('active');
+    else if (tab === 'lenses') document.querySelectorAll('.tab-btn')[3].classList.add('active');
+  }
+
+  window.onload = () => {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      adminToken = token;
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('adminContent').classList.remove('hidden');
+      loadDashboard();
+      loadProducts();
+      loadOrders();
+      loadLenses();
+    }
+  };
+</script>
+</body>
+</html>
