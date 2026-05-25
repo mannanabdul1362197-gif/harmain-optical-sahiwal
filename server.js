@@ -292,18 +292,3 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
-// TEMPORARY ROUTE – Admin password change (remove after use)
-app.get('/update-password', (req, res) => {
-  const newPass = req.query.pass;
-  if (!newPass) {
-    return res.send('Usage: /update-password?pass=YOUR_NEW_PASSWORD');
-  }
-  const bcrypt = require('bcryptjs');
-  const hashed = bcrypt.hashSync(newPass, 10);
-  db.run(`UPDATE users SET password = ? WHERE username = 'admin'`, [hashed], function(err) {
-    if (err) {
-      return res.send('Database error: ' + err.message);
-    }
-    res.send(`✅ Password successfully changed to: ${newPass}`);
-  });
-});
